@@ -1,9 +1,9 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
 import logging
 import os
-import sys
 
 logger_initialized = {}
+
 
 def get_logger(name, save_dir, distributed_rank, filename="log.log", resume=False):
     logger = logging.getLogger(name)
@@ -24,9 +24,9 @@ def get_logger(name, save_dir, distributed_rank, filename="log.log", resume=Fals
 
     if save_dir:
         if resume:
-            fh = logging.FileHandler(os.path.join(save_dir, filename), mode='a')
+            fh = logging.FileHandler(os.path.join(save_dir, filename), mode="a")
         else:
-            fh = logging.FileHandler(os.path.join(save_dir, filename), mode='w')
+            fh = logging.FileHandler(os.path.join(save_dir, filename), mode="w")
         fh.setLevel(logging.INFO)
         fh.setFormatter(formatter)
         logger.addHandler(fh)
