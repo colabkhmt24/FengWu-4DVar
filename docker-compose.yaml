@@ -1,0 +1,13 @@
+services:
+  storage:
+    image: dxflrs/garage:34599bff512e523373c9ca9c3355c57f8da006c6
+    networks:
+      - fengwu
+    ports:
+      - "3900:3900"
+    volumes:
+      - "./garage.toml:/etc/garage.toml"
+
+networks:
+  fengwu:
+    driver: "bridge"
