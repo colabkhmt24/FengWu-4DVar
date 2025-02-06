@@ -50,6 +50,7 @@ zarr = "^3.0.0"
 xarray = {extras = ["complete"], version = "^2025.1.1"}
 numba = "0.60.0"
 pandas = "2.1.1"
+minio = "^7.2.15"
 
 [tool.poetry.group.dev.dependencies]
 poethepoet = "^0.30.0"

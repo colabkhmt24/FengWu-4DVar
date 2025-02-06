@@ -4,16 +4,23 @@ import os
 import time
 from collections import OrderedDict
 
+import minio
 import numpy as np
 import pandas as pd
 import torch
 import torch.optim as optim
 import yaml
-from petrel_client.client import Client
+from environs import env
 from torch_harmonics import *
 
 from networks.transformer import LGUnet_all
 from utils.metrics import Metrics
+
+AWS_S3_ENDPOINT_URL = "9cb6-171-243-49-191.ngrok-free.app"
+BUCKET_NAME = "era-bucket"
+
+
+env.read_env()
 
 
 def arg_parser():
@@ -92,7 +99,13 @@ def arg_parser():
 
 class data_reader:
     def __init__(self, obs_type, obs_std, model_std, da_win, cycle_time, step_int_time):
-        self.client = Client(conf_path="~/petreloss.conf")
+        self.client = minio.Minio(
+            AWS_S3_ENDPOINT_URL,
+            env("AWS_ACCESS_KEY_ID"),
+            env("AWS_SECRET_ACCESS_KEY"),
+            # Force the region, this is specific to garage
+            region="garage",
+        )
         self.device = "cuda"
         self.obs_type = obs_type
         self.da_win = da_win
@@ -103,6 +116,7 @@ class data_reader:
         self.obs_var = obs_var_norm * model_std.reshape(-1, 1, 1) ** 2
 
     def get_state(self, tstamp, data_dir="s3://era5_np128x256"):
+        print(tstamp)
         state = []
         single_level_vnames = ["u10", "v10", "t2m", "msl"]
         multi_level_vnames = ["z", "q", "u", "v", "t"]
@@ -112,7 +126,7 @@ class data_reader:
                 "single/" + str(tstamp.year), str(tstamp.to_datetime64()).split(".")[0]
             ).replace("T", "/")
             url = f"{data_dir}/{file}-{vname}.npy"
-            with io.BytesIO(self.client.get(url)) as f:
+            with io.BytesIO(self.client.get_object(BUCKET_NAME, url).data) as f:
                 state.append(np.load(f))
         for vname in multi_level_vnames:
             file = os.path.join(
@@ -121,7 +135,7 @@ class data_reader:
             for idx in range(13):
                 height = height_level[idx]
                 url = f"{data_dir}/{file}-{vname}-{height}.0.npy"
-                with io.BytesIO(self.client.get(url)) as f:
+                with io.BytesIO(self.client.get_object(BUCKET_NAME, url).data) as f:
                     state.append(np.load(f).reshape(1, 128, 256))
         state = np.concatenate(state, 0)
         return torch.from_numpy(state).to(self.device)
