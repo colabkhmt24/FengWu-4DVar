@@ -2,21 +2,18 @@ import argparse
 import io
 import os
 import time
-from collections import OrderedDict
 
 import minio
 import numpy as np
 import pandas as pd
 import torch
 import torch.optim as optim
-import yaml
 from environs import env
-from torch_harmonics import *
+from torch_harmonics import InverseRealSHT, RealSHT
 
-from networks.transformer import LGUnet_all
 from utils.metrics import Metrics
 
-AWS_S3_ENDPOINT_URL = "9cb6-171-243-49-191.ngrok-free.app"
+AWS_S3_ENDPOINT_URL = "b012-171-243-49-191.ngrok-free.app"
 BUCKET_NAME = "era-bucket"
 
 
@@ -28,12 +25,12 @@ def arg_parser():
     parser.add_argument(
         "--start_time",
         type=str,
-        default="2018-01-01 00:00:00",
+        default="2018-01-03 00:00:00",
     )
     parser.add_argument(
         "--end_time",
         type=str,
-        default="2018-12-31 23:00:00",
+        default="2018-01-05 23:00:00",
     )
     parser.add_argument(
         "--coeff_dir",
@@ -115,7 +112,7 @@ class data_reader:
         obs_var_norm = torch.zeros(69, 128, 256).to(self.device) + obs_std**2
         self.obs_var = obs_var_norm * model_std.reshape(-1, 1, 1) ** 2
 
-    def get_state(self, tstamp, data_dir="s3://era5_np128x256"):
+    def get_state(self, tstamp):
         print(tstamp)
         state = []
         single_level_vnames = ["u10", "v10", "t2m", "msl"]
@@ -125,7 +122,7 @@ class data_reader:
             file = os.path.join(
                 "single/" + str(tstamp.year), str(tstamp.to_datetime64()).split(".")[0]
             ).replace("T", "/")
-            url = f"{data_dir}/{file}-{vname}.npy"
+            url = f"{file}-{vname}.npy"
             with io.BytesIO(self.client.get_object(BUCKET_NAME, url).data) as f:
                 state.append(np.load(f))
         for vname in multi_level_vnames:
@@ -134,16 +131,16 @@ class data_reader:
             ).replace("T", "/")
             for idx in range(13):
                 height = height_level[idx]
-                url = f"{data_dir}/{file}-{vname}-{height}.0.npy"
+                url = f"{file}-{vname}-{height}.0.npy"
                 with io.BytesIO(self.client.get_object(BUCKET_NAME, url).data) as f:
-                    state.append(np.load(f).reshape(1, 128, 256))
+                    state.append(np.load(f))
         state = np.concatenate(state, 0)
         return torch.from_numpy(state).to(self.device)
 
     def get_obs_mask(self, tstamp):
         H = torch.zeros(self.da_win, 69, 128, 256).to(self.device)
         H_file = (
-            torch.from_numpy(np.load("dataset/mask_%s.npy" % self.obs_type))
+            torch.from_numpy(np.load(f"dataset/mask_{self.obs_type}.npy"))
             .float()
             .to(self.device)
         )
@@ -153,7 +150,7 @@ class data_reader:
 
     def get_obs_gt(self, current_time):
         state = [self.get_state(current_time)]
-        for i in range(self.da_win - 1):
+        for _i in range(self.da_win - 1):
             current_time += self.step_int_time
             state.append(self.get_state(current_time))
         gt = torch.stack(state, 0)
@@ -296,7 +293,7 @@ class cyclic_4dvar:
         return model
 
     def init_file_dir(self):
-        os.makedirs("da_cycle_results/%s" % (self.name), exist_ok=True)
+        os.makedirs(f"da_cycle_results/{self.name}", exist_ok=True)
 
     def get_static_info(self):
         ### calculating horizontal factor
@@ -363,7 +360,7 @@ class cyclic_4dvar:
         rmse = torch.sqrt(torch.mean((gt - xb) ** 2, (1, 2)))
         print("xb rmse per layer", rmse.cpu().numpy())
         mse = torch.mean(((gt - xb) / self.model_std.reshape(-1, 1, 1)) ** 2)
-        print("xb mse: %.3g" % (mse))
+        print(f"xb mse: {mse:.3g}")
         return xb
 
     def integrate(self, xa, model, step):
@@ -377,10 +374,10 @@ class cyclic_4dvar:
         ) + self.model_mean.reshape(-1, 1, 1)
 
     def get_current_states(self):
-        if os.path.exists("da_cycle_results/%s/current_time.txt" % (self.name)):
-            f = open("da_cycle_results/%s/current_time.txt" % self.name)
+        if os.path.exists(f"da_cycle_results/{self.name}/current_time.txt"):
+            f = open(f"da_cycle_results/{self.name}/current_time.txt")
             self.current_time = pd.Timestamp(f.read())
-            state = np.load("da_cycle_results/%s/xb.npy" % self.name)
+            state = np.load(f"da_cycle_results/{self.name}/xb.npy")
             self.xb = torch.from_numpy(state).to(self.device)
         else:
             self.current_time = self.start_time
@@ -390,12 +387,12 @@ class cyclic_4dvar:
 
     def save_eval_result(self, finish=False, gt=None, obs=None):
         for key in self.metrics_list:
-            np.save("da_cycle_results/%s/%s" % (self.name, key), self.metrics_list[key])
+            np.save(f"da_cycle_results/{self.name}/{key}", self.metrics_list[key])
         print("finish saving results")
 
         if not finish:
-            np.save("da_cycle_results/%s/xb" % self.name, self.xb.cpu().numpy())
-            with open("da_cycle_results/%s/current_time.txt" % self.name, "w") as f:
+            np.save(f"da_cycle_results/{self.name}/xb", self.xb.cpu().numpy())
+            with open(f"da_cycle_results/{self.name}/current_time.txt", "w") as f:
                 f.write(str(self.current_time))
             if self.save_field:
                 np.save(
