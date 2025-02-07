@@ -246,8 +246,8 @@ If you already have a cloud S3 storage, you can skip this section.
 
 - Download dataset to Garage S3 storage:
 
-  - From Google Colab (**WIP**):
-    [data_prep_weather_forecast.ipynb](https://colab.research.google.com/drive/1c8pA-D5abTpLlq-mG7qpn053aa-LYQSi?usp=sharing).
+  - From Google Colab:
+    [data_prep_weather_forecast.ipynb](/notebooks/data_prep_weather_forecast.ipynb).
 
   - This script will download data from
     [ERA5 data from Google Cloud Public Dataset](https://cloud.google.com/storage/docs/public-datasets/era5)
