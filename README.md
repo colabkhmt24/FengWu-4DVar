@@ -124,6 +124,19 @@ See more from the official guides:
   garage key create era-app-key
   ```
 
+  Then you will see the key and secret, save it for the next step:
+
+  ```bash
+  Key name: era-bucket-app-key
+  Key ID: GK01efd7ca3614236dc903a81a # Save this key ID
+  Secret key: 50a96dfd99be44d836457791f1321bdc96996f259ce04f7650d7e0c02ba1f9ee # Save this secret key for later use
+  Can create buckets: false
+
+  Key-specific bucket aliases:
+
+  Authorized buckets:
+  ```
+
 - Allow the key to access the bucket:
 
   ```bash
