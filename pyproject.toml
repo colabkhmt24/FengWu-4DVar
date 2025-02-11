@@ -61,6 +61,9 @@ pre-commit = "^4.0.0"
 ruff = "^0.7.0"
 awscli = "^1.37.13"
 
+[tool.poetry.requires-plugins]
+poetry-plugin-export = ">=1.8"
+
 [[tool.poetry.source]]
 name = "pytorch"
 url = "https://download.pytorch.org/whl/cu121"
