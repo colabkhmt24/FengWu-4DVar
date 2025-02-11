@@ -5,6 +5,7 @@ import time
 
 import minio
 import numpy as np
+import onnxruntime
 import pandas as pd
 import torch
 import torch.optim as optim
@@ -13,7 +14,7 @@ from torch_harmonics import InverseRealSHT, RealSHT
 
 from utils.metrics import Metrics
 
-AWS_S3_ENDPOINT_URL = "b012-171-243-49-191.ngrok-free.app"
+AWS_S3_ENDPOINT_URL = "localhost:3900"
 BUCKET_NAME = "era-bucket"
 
 
@@ -102,6 +103,7 @@ class data_reader:
             env("AWS_SECRET_ACCESS_KEY"),
             # Force the region, this is specific to garage
             region="garage",
+            secure=False,
         )
         self.device = "cuda"
         self.obs_type = obs_type
@@ -112,7 +114,7 @@ class data_reader:
         obs_var_norm = torch.zeros(69, 128, 256).to(self.device) + obs_std**2
         self.obs_var = obs_var_norm * model_std.reshape(-1, 1, 1) ** 2
 
-    def get_state(self, tstamp):
+    def get_one_state(self, tstamp):
         print(tstamp)
         state = []
         single_level_vnames = ["u10", "v10", "t2m", "msl"]
@@ -124,7 +126,7 @@ class data_reader:
             ).replace("T", "/")
             url = f"{file}-{vname}.npy"
             with io.BytesIO(self.client.get_object(BUCKET_NAME, url).data) as f:
-                state.append(np.load(f))
+                state.append([np.load(f)])
         for vname in multi_level_vnames:
             file = os.path.join(
                 str(tstamp.year), str(tstamp.to_datetime64()).split(".")[0]
@@ -133,9 +135,18 @@ class data_reader:
                 height = height_level[idx]
                 url = f"{file}-{vname}-{height}.0.npy"
                 with io.BytesIO(self.client.get_object(BUCKET_NAME, url).data) as f:
-                    state.append(np.load(f))
+                    state.append([np.load(f)])
         state = np.concatenate(state, 0)
         return torch.from_numpy(state).to(self.device)
+
+    def get_state(self, tstamp):
+        return torch.stack(
+            [
+                *self.get_one_state(tstamp),
+                *self.get_one_state(tstamp + pd.Timedelta(hours=6)),
+            ],
+            dim=0,
+        )
 
     def get_obs_mask(self, tstamp):
         H = torch.zeros(self.da_win, 69, 128, 256).to(self.device)
@@ -165,7 +176,7 @@ class cyclic_4dvar:
         self.device = "cuda"
         self.start_time = pd.Timestamp(args.start_time)
         self.end_time = pd.Timestamp(args.end_time)
-        self.cycle_time = pd.Timedelta("6H")
+        self.cycle_time = pd.Timedelta("1d")
         self.step_int_time = pd.Timedelta("1H")
         self.da_mode = args.da_mode
         self.da_win = args.da_win
@@ -274,22 +285,12 @@ class cyclic_4dvar:
         return q
 
     def init_model(self, path):
-        with open("output/model/%s/training_options.yaml" % (path)) as cfg_file:
-            cfg_params = yaml.load(cfg_file, Loader=yaml.FullLoader)
-        model = LGUnet_all(**cfg_params["model"]["network_params"])
-        checkpoint_dict = torch.load("output/model/%s/checkpoint_best.pth" % (path))
-        checkpoint_model = checkpoint_dict["model"]
-        new_state_dict = OrderedDict()
-        for k, v in checkpoint_model.items():
-            if k[:6] == "module":
-                name = k[7:]
-            else:
-                name = k
-            if name != "max_logvar" and name != "min_logvar":
-                new_state_dict[name] = v
-        model.load_state_dict(new_state_dict)
-        model.to(self.device)
-        model.eval()
+        # Load ONNX model
+        onnx_model_path = f"output/model/{path}/model.onnx"
+        model = onnxruntime.InferenceSession(
+            onnx_model_path, providers=["CPUExecutionProvider"]
+        )
+
         return model
 
     def init_file_dir(self):
@@ -364,10 +365,26 @@ class cyclic_4dvar:
         return xb
 
     def integrate(self, xa, model, step):
-        za = (xa - self.model_mean.reshape(-1, 1, 1)) / self.model_std.reshape(-1, 1, 1)
-        z = za.unsqueeze(0)
-        for i in range(step):
-            z = model(z)[:, : self.nchannel].detach()
+        za = torch.stack(
+            [
+                *(
+                    (xa[:69] - self.model_mean.reshape(-1, 1, 1))
+                    / self.model_std.reshape(-1, 1, 1)
+                ),
+                *(
+                    (xa[69:] - self.model_mean.reshape(-1, 1, 1))
+                    / self.model_std.reshape(-1, 1, 1)
+                ),
+            ]
+        )
+        z = za.cpu().unsqueeze(0).numpy()  # Convert to NumPy array for ONNX runtime
+
+        input_name = model.get_inputs()[0].name  # Get input layer name
+        output_name = model.get_outputs()[0].name  # Get output layer name
+
+        for _i in range(step):
+            z = model.run([output_name], {input_name: z})[0]  # Run inference
+            z = z[:, : self.nchannel]  # Apply channel slicing as in original code
 
         return z.reshape(self.nchannel, self.nlat, self.nlon) * self.model_std.reshape(
             -1, 1, 1
