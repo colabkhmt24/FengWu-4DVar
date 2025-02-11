@@ -35,7 +35,7 @@ select = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.12,<3.13"
+python = ">=3.11,<3.13"
 environs = "^14.1.0"
 torch = { version = "2.5.0", source = "pytorch" }
 torchvision = { version = "0.20.0", source = "pytorch" }
