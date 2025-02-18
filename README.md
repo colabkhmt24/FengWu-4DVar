@@ -172,7 +172,49 @@ See more from the official guides:
   source ~/.awsrc
   ```
 
-## Expose the Garage instance with Ngrok
+## Download dataset
+
+- Download trained models from
+  [OpenEarthLab/FengWu](https://github.com/OpenEarthLab/FengWu):
+
+  - Fengwu without transfer learning (fengwu_v1.onnx):
+    [Onedrive](https://pjlab-my.sharepoint.cn/:u:/g/personal/chenkang_pjlab_org_cn/EVA6V_Qkp6JHgXwAKxXIzDsBPIddo5RgDtGCBQ-sQbMmwg).
+
+  - Fengwu with transfer learning (fengwu_v2.onnx, finetune the model with
+    analysis data up to 2021):
+    [Onedrive](https://pjlab-my.sharepoint.cn/:u:/g/personal/chenkang_pjlab_org_cn/EZkFM7nQcEtBve6MsqlWaeIB_lmpa__hX0I8QYOPzf-X6A).
+
+### Download dataset from Google Drive (**recommended**):
+
+1. Upload & run this script
+   [data_prep_weather_forecast.ipynb](/notebooks/data_prep_weather_forecast.
+   ipynb) on your Google Colab environment.
+
+   This script will download a zip file that contains data from
+   [ERA5 data from Google Cloud Public Dataset](https://cloud.google.com/storage/docs/public-datasets/era5)
+   to your Google Drive.
+
+   Then you have to download it to your local machine.
+
+2. Extract the zip file:
+
+   ```bash
+   unzip era5.zip
+   ```
+
+3. Copy dataset to S3 storage using AWS cli:
+
+   ```bash
+   aws s3 cp era5 s3://era-bucket/ --recursive
+   ```
+
+<!-- prettier-ignore -->
+> [!NOTE]
+> `era-bucket` is the name of the bucket that you have created.
+
+### Download dataset directly to your S3 storage
+
+#### Expose the Garage instance with Ngrok
 
 If you already have a cloud S3 storage, you can skip this section.
 
@@ -202,6 +244,21 @@ If you already have a cloud S3 storage, you can skip this section.
   ```bash
   ngrok http http://localhost:3900
   ```
+
+#### Download the dataset
+
+1. Upload & run this script
+   [data_prep_weather_forecast_async.ipynb](/notebooks/data_prep_weather_forecast_async.
+   ipynb) on your Google Colab environment.
+
+2. This script will download data from
+   [ERA5 data from Google Cloud Public Dataset](https://cloud.google.com/storage/docs/public-datasets/era5)
+   to S3 storage that you have created.
+
+<!-- prettier-ignore -->
+> [!NOTE]
+> You can remove async and just run the upload function if you don't want to use
+> asyncio.
 
 ## Setup project environments
 
@@ -244,27 +301,6 @@ If you already have a cloud S3 storage, you can skip this section.
 
   You can also check out the file `.env.example` to see all required environment
   variables.
-
-## Download the data
-
-- Download trained models from
-  [OpenEarthLab/FengWu](https://github.com/OpenEarthLab/FengWu):
-
-  - Fengwu without transfer learning (fengwu_v1.onnx):
-    [Onedrive](https://pjlab-my.sharepoint.cn/:u:/g/personal/chenkang_pjlab_org_cn/EVA6V_Qkp6JHgXwAKxXIzDsBPIddo5RgDtGCBQ-sQbMmwg).
-
-  - Fengwu with transfer learning (fengwu_v2.onnx, finetune the model with
-    analysis data up to 2021):
-    [Onedrive](https://pjlab-my.sharepoint.cn/:u:/g/personal/chenkang_pjlab_org_cn/EZkFM7nQcEtBve6MsqlWaeIB_lmpa__hX0I8QYOPzf-X6A).
-
-- Download dataset to Garage S3 storage:
-
-  - From Google Colab:
-    [data_prep_weather_forecast.ipynb](/notebooks/data_prep_weather_forecast.ipynb).
-
-  - This script will download data from
-    [ERA5 data from Google Cloud Public Dataset](https://cloud.google.com/storage/docs/public-datasets/era5)
-    to the Garage S3 storage that we have setup earlier.
 
 ## Acknowledgements
 
