@@ -5,14 +5,16 @@ import time
 
 import minio
 import numpy as np
-import onnxruntime
 import pandas as pd
 import torch
 import torch.optim as optim
 from environs import env
+from scipy.ndimage import zoom
 from torch_harmonics import InverseRealSHT, RealSHT
 
 from utils.metrics import Metrics
+
+torch.cuda.empty_cache()
 
 AWS_S3_ENDPOINT_URL = "localhost:3900"
 BUCKET_NAME = "era-bucket"
@@ -26,12 +28,12 @@ def arg_parser():
     parser.add_argument(
         "--start_time",
         type=str,
-        default="2018-01-03 00:00:00",
+        default="2019-01-03 00:00:00",
     )
     parser.add_argument(
         "--end_time",
         type=str,
-        default="2018-01-05 23:00:00",
+        default="2019-01-10 23:00:00",
     )
     parser.add_argument(
         "--coeff_dir",
@@ -56,7 +58,7 @@ def arg_parser():
     parser.add_argument(
         "--da_win",
         type=int,
-        default=6,
+        default=2,
     )
     parser.add_argument(
         "--init_lag",
@@ -105,7 +107,7 @@ class data_reader:
             region="garage",
             secure=False,
         )
-        self.device = "cuda"
+        self.device = "cpu"
         self.obs_type = obs_type
         self.da_win = da_win
         self.cycle_time = cycle_time
@@ -113,9 +115,35 @@ class data_reader:
         # if not obs_type[:4] == "real":
         obs_var_norm = torch.zeros(69, 128, 256).to(self.device) + obs_std**2
         self.obs_var = obs_var_norm * model_std.reshape(-1, 1, 1) ** 2
+        self.timestamp: None | pd.Timestamp = None
 
-    def get_one_state(self, tstamp):
-        print(tstamp)
+    def get_one_state_from_local(self, tstamp, base_dir="./data", save_timestamp=True):
+        if save_timestamp:
+            self.timestamp = tstamp
+        state = []
+        single_level_vnames = ["u10", "v10", "t2m", "msl"]
+        multi_level_vnames = ["z", "q", "u", "v", "t"]
+        height_level = [50, 100, 150, 200, 250, 300, 400, 500, 600, 700, 850, 925, 1000]
+        for vname in single_level_vnames:
+            file = os.path.join(
+                "single/" + str(tstamp.year), str(tstamp.to_datetime64()).split(".")[0]
+            ).replace("T", "/")
+            url = f"{file}-{vname}.npy"
+            state.append([np.load(os.path.join(base_dir, url))])
+        for vname in multi_level_vnames:
+            file = os.path.join(
+                str(tstamp.year), str(tstamp.to_datetime64()).split(".")[0]
+            ).replace("T", "/")
+            for idx in range(13):
+                height = height_level[idx]
+                url = f"{file}-{vname}-{height}.0.npy"
+                state.append([np.load(os.path.join(base_dir, url))])
+        state = np.concatenate(state, 0)
+        return torch.from_numpy(state).to(self.device)
+
+    def get_one_state_from_s3(self, tstamp, save_timestamp=True):
+        if save_timestamp:
+            self.timestamp = tstamp
         state = []
         single_level_vnames = ["u10", "v10", "t2m", "msl"]
         multi_level_vnames = ["z", "q", "u", "v", "t"]
@@ -140,13 +168,7 @@ class data_reader:
         return torch.from_numpy(state).to(self.device)
 
     def get_state(self, tstamp):
-        return torch.stack(
-            [
-                *self.get_one_state(tstamp),
-                *self.get_one_state(tstamp + pd.Timedelta(hours=6)),
-            ],
-            dim=0,
-        )
+        return self.get_one_state_from_local(tstamp)
 
     def get_obs_mask(self, tstamp):
         H = torch.zeros(self.da_win, 69, 128, 256).to(self.device)
@@ -160,10 +182,20 @@ class data_reader:
         return H
 
     def get_obs_gt(self, current_time):
-        state = [self.get_state(current_time)]
+        data = self.get_state(current_time)
+        state = [
+            torch.from_numpy(
+                zoom(data, (1, 128 / data.shape[1], 256 / data.shape[2]), order=1)
+            )
+        ]
         for _i in range(self.da_win - 1):
             current_time += self.step_int_time
-            state.append(self.get_state(current_time))
+            data = self.get_state(current_time)
+            state.append(
+                torch.from_numpy(
+                    zoom(data, (1, 128 / data.shape[1], 256 / data.shape[2]), order=1)
+                )
+            )
         gt = torch.stack(state, 0)
         obs = gt + torch.sqrt(self.obs_var) * torch.randn(self.da_win, 69, 128, 256).to(
             self.device
@@ -173,11 +205,11 @@ class data_reader:
 
 class cyclic_4dvar:
     def __init__(self, args):
-        self.device = "cuda"
+        self.device = "cpu"
         self.start_time = pd.Timestamp(args.start_time)
         self.end_time = pd.Timestamp(args.end_time)
-        self.cycle_time = pd.Timedelta("1d")
-        self.step_int_time = pd.Timedelta("1H")
+        self.cycle_time = pd.Timedelta("24H")
+        self.step_int_time = pd.Timedelta("6H")
         self.da_mode = args.da_mode
         self.da_win = args.da_win
         self.nlon = 256
@@ -286,12 +318,12 @@ class cyclic_4dvar:
 
     def init_model(self, path):
         # Load ONNX model
-        onnx_model_path = f"output/model/{path}/model.onnx"
-        model = onnxruntime.InferenceSession(
-            onnx_model_path, providers=["CPUExecutionProvider"]
-        )
+        onnx_model_path = "model.onnx"
+        # model = onnxruntime.InferenceSession(
+        #     onnx_model_path, providers=["CPUExecutionProvider"]
+        # )
 
-        return model
+        return None
 
     def init_file_dir(self):
         os.makedirs(f"da_cycle_results/{self.name}", exist_ok=True)
@@ -357,7 +389,10 @@ class cyclic_4dvar:
             self.start_time - self.init_lag * pd.Timedelta("6H")
         )
         xb = self.integrate(x0, self.forecast_model, self.init_lag)
-        gt = self.data_reader.get_state(self.start_time)
+        gt = self.data_reader.get_state(self.start_time).numpy()
+        gt = torch.from_numpy(
+            zoom(gt, (1, 128 / gt.shape[1], 256 / gt.shape[2]), order=1)
+        )
         rmse = torch.sqrt(torch.mean((gt - xb) ** 2, (1, 2)))
         print("xb rmse per layer", rmse.cpu().numpy())
         mse = torch.mean(((gt - xb) / self.model_std.reshape(-1, 1, 1)) ** 2)
@@ -365,6 +400,8 @@ class cyclic_4dvar:
         return xb
 
     def integrate(self, xa, model, step):
+        xa = torch.cat((xa, xa), 0)
+
         za = torch.stack(
             [
                 *(
@@ -377,16 +414,22 @@ class cyclic_4dvar:
                 ),
             ]
         )
-        z = za.cpu().unsqueeze(0).numpy()  # Convert to NumPy array for ONNX runtime
+        z = za.unsqueeze(0).cpu().numpy()  # Convert to NumPy array for ONNX runtime
 
-        input_name = model.get_inputs()[0].name  # Get input layer name
-        output_name = model.get_outputs()[0].name  # Get output layer name
+        # input_name = model.get_inputs()[0].name  # Get input layer name
+        # output_name = model.get_outputs()[0].name  # Get output layer name
 
         for _i in range(step):
-            z = model.run([output_name], {input_name: z})[0]  # Run inference
-            z = z[:, : self.nchannel]  # Apply channel slicing as in original code
+            # z = model.run(None, {"input": z})[0]  # Run inference
+            z = z[: self.nchannel]  # Apply channel slicing as in original code
 
-        return z.reshape(self.nchannel, self.nlat, self.nlon) * self.model_std.reshape(
+        z = z[0, :69]
+
+        z = zoom(z, (1, 128 / z.shape[1], 256 / z.shape[2]), order=1)
+
+        print(z.shape)
+
+        return torch.from_numpy(z) * self.model_std.reshape(
             -1, 1, 1
         ) + self.model_mean.reshape(-1, 1, 1)
 
