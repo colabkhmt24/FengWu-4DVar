@@ -5,6 +5,7 @@ import time
 
 import minio
 import numpy as np
+import onnxruntime
 import pandas as pd
 import torch
 import torch.optim as optim
@@ -100,8 +101,8 @@ class data_reader:
     def __init__(self, obs_type, obs_std, model_std, da_win, cycle_time, step_int_time):
         self.client = minio.Minio(
             AWS_S3_ENDPOINT_URL,
-            env("AWS_ACCESS_KEY_ID"),
-            env("AWS_SECRET_ACCESS_KEY"),
+            "",
+            "",
             # Force the region, this is specific to garage
             region="garage",
             secure=False,
@@ -117,7 +118,10 @@ class data_reader:
         self.timestamp: None | pd.Timestamp = None
 
     def get_one_state_from_local(
-        self, tstamp, base_dir="./dist/data", save_timestamp=True
+        self,
+        tstamp,
+        base_dir="/content/drive/MyDrive/data/content/data",
+        save_timestamp=True,
     ):
         if save_timestamp:
             self.timestamp = tstamp
@@ -309,12 +313,12 @@ class cyclic_4dvar:
 
     def init_model(self, path):
         # Load ONNX model
-        onnx_model_path = "model.onnx"
-        # model = onnxruntime.InferenceSession(
-        #     onnx_model_path, providers=["CPUExecutionProvider"]
-        # )
+        onnx_model_path = "/content/drive/MyDrive/model.onnx"
+        model = onnxruntime.InferenceSession(
+            onnx_model_path, providers=["CPUExecutionProvider"]
+        )
 
-        return None
+        return model
 
     def init_file_dir(self):
         os.makedirs(f"da_cycle_results/{self.name}", exist_ok=True)
@@ -408,10 +412,12 @@ class cyclic_4dvar:
         # output_name = model.get_outputs()[0].name  # Get output layer name
 
         for _i in range(step):
-            # z = model.run(None, {"input": z})[0]  # Run inference
+            z = model.run(None, {"input": np.reshape(z, (1, 138, 721, 1440))})[
+                0
+            ]  # Run inference
             z = z[: self.nchannel]  # Apply channel slicing as in original code
 
-        z = z[0, :69]
+        z = z.squeeze()[:69]
 
         print(z.shape)
 
