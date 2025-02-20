@@ -302,6 +302,46 @@ If you already have a cloud S3 storage, you can skip this section.
   You can also check out the file `.env.example` to see all required environment
   variables.
 
+## Setup dataset
+
+By default FengWu-4DVar is configured for (69, 128, 256) dataset shape, but the
+model taken from the original FengWu has shape (168, 721, 1440), so we need to
+do some preprocessing.
+
+- Convert `/dataset/mask_random_*.npy` shape to (69, 721, 1440) in
+  [/notebooks/mask_resize.ipynb](./notebooks/mask_resize.ipynb):
+
+  ```python
+  import numpy as np
+  import cv2
+  import glob
+
+  # List of mask files to resize
+
+  mask_files = ["./dataset/mask_random_005.npy", "./dataset/mask_random_010.npy",
+  "./dataset/mask_random_015.npy"]
+
+  # Target size
+
+  target_shape = (69, 721, 1440) # (depth, height, width)
+
+  for file in mask_files: # Load mask mask = np.load(file) # Shape: (69, 128, 256)
+  print(f"Resizing {file}: Original shape {mask.shape}")
+
+      # Prepare resized array
+      mask_resized = np.zeros(target_shape, dtype=np.uint8)
+
+      # Resize each slice independently
+      for i in range(69):
+          mask_resized[i] = cv2.resize(mask[i], (1440, 721), interpolation=cv2.INTER_NEAREST)
+
+      # Save resized mask
+      output_file = file.replace(".npy", "_resized.npy")
+      np.save(output_file, mask_resized)
+
+      print(f"Saved {output_file}: New shape {mask_resized.shape}")
+  ```
+
 ## Acknowledgements
 
 - [Towards a Self-contained Data-driven Global Weather Forecasting Framework](https://proceedings.mlr.press/v235/xiao24a.html).
