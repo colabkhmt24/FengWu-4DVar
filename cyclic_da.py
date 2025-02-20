@@ -116,6 +116,78 @@ class data_reader:
         self.obs_var = obs_var_norm * model_std.reshape(-1, 1, 1) ** 2
         self.timestamp: None | pd.Timestamp = None
 
+    def get_one_state_from_gcloud(self, tstamp, save_timestamp=True):
+        import xarray as xr
+
+        if save_timestamp:
+            self.timestamp = tstamp
+
+        ds = xr.open_zarr(
+            "gs://gcp-public-data-arco-era5/ar/1959-2022-6h-1440x721.zarr"
+        )
+
+        selected_levels = [
+            50,
+            100,
+            150,
+            200,
+            250,
+            300,
+            400,
+            500,
+            600,
+            700,
+            850,
+            925,
+            1000,
+        ]
+
+        # Filter dataset
+        filtered_ds = ds.sel(
+            time=tstamp,
+            level=selected_levels,  # Filter by pressure levels
+        )
+
+        resampled_ds = filtered_ds[
+            [
+                "10m_u_component_of_wind",
+                "10m_v_component_of_wind",
+                "2m_temperature",
+                "mean_sea_level_pressure",
+                "geopotential",
+                "specific_humidity",
+                "u_component_of_wind",
+                "v_component_of_wind",
+                "temperature",
+            ]
+        ]
+
+        single_level_mapping = [
+            "10m_u_component_of_wind",
+            "10m_v_component_of_wind",
+            "2m_temperature",
+            "mean_sea_level_pressure",
+        ]
+
+        multi_level_mapping = [
+            "geopotential",
+            "specific_humidity",
+            "u_component_of_wind",
+            "v_component_of_wind",
+            "temperature",
+        ]
+
+        res = []
+
+        for keys in single_level_mapping:
+            res.append(resampled_ds[keys].values)
+
+        for keys in multi_level_mapping:
+            for levelIdx in range(13):
+                res.append(resampled_ds[keys][levelIdx].values)
+
+        return torch.from_numpy(np.array(res)).to(self.device)
+
     def get_one_state_from_local(
         self, tstamp, base_dir="./dist/data", save_timestamp=True
     ):
