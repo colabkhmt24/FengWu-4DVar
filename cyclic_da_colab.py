@@ -28,12 +28,12 @@ def arg_parser():
     parser.add_argument(
         "--start_time",
         type=str,
-        default="2019-01-03 00:00:00",
+        default="2018-01-01 00:00:00",
     )
     parser.add_argument(
         "--end_time",
         type=str,
-        default="2019-01-10 23:00:00",
+        default="2018-02-20 23:00:00",
     )
     parser.add_argument(
         "--coeff_dir",
