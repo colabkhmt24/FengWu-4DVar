@@ -276,7 +276,7 @@ class cyclic_4dvar:
         self.device = "cpu"
         self.start_time = pd.Timestamp(args.start_time)
         self.end_time = pd.Timestamp(args.end_time)
-        self.cycle_time = pd.Timedelta("24H")
+        self.cycle_time = pd.Timedelta("12H")
         self.step_int_time = pd.Timedelta("6H")
         self.da_mode = args.da_mode
         self.da_win = args.da_win
@@ -465,7 +465,10 @@ class cyclic_4dvar:
         return xb
 
     def integrate(self, xa, model, step):
-        xa = torch.cat((xa, xa), 0)
+        xa_next = self.data_reader.get_state(
+            self.data_reader.timestamp + pd.Timedelta(hours=6)
+        )
+        xa = torch.cat((xa, xa_next), 0)
 
         za = torch.stack(
             [
