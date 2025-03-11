@@ -102,6 +102,8 @@ def arg_parser():
 
 class data_reader:
     def __init__(self, obs_type, obs_std, model_std, da_win, cycle_time, step_int_time):
+        import xarray as xr
+
         self.client = minio.Minio(
             AWS_S3_ENDPOINT_URL,
             env("AWS_ACCESS_KEY_ID", ""),
@@ -120,13 +122,11 @@ class data_reader:
         self.obs_var = obs_var_norm * model_std.reshape(-1, 1, 1) ** 2
         self.timestamp: None | pd.Timestamp = None
 
-    def get_one_state_from_gcloud(self, tstamp, save_timestamp=True):
-        import xarray as xr
+        self.ds = xr.open_zarr(GCLOUD_BUCKET)
 
+    def get_one_state_from_gcloud(self, tstamp, save_timestamp=True):
         if save_timestamp:
             self.timestamp = tstamp
-
-        ds = xr.open_zarr(GCLOUD_BUCKET)
 
         selected_levels = [
             50,
@@ -145,7 +145,7 @@ class data_reader:
         ]
 
         # Filter dataset
-        filtered_ds = ds.sel(
+        filtered_ds = self.ds.sel(
             time=tstamp,
             level=selected_levels,  # Filter by pressure levels
         )
