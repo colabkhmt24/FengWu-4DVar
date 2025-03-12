@@ -16,11 +16,13 @@ from utils.metrics import Metrics
 
 torch.cuda.empty_cache()
 
-AWS_S3_ENDPOINT_URL = "localhost:3900"
-BUCKET_NAME = "era-bucket"
-ONNX_MODEL_PATH = "/content/drive/MyDrive/model.onnx"
-BASE_DATA_DIR = "/content/drive/MyDrive/data/content/data"
-GCLOUD_BUCKET = "gs://gcp-public-data-arco-era5/ar/1959-2022-6h-1440x721.zarr"
+AWS_S3_ENDPOINT_URL = env("AWS_S3_ENDPOINT_URL", "localhost:3900")
+BUCKET_NAME = env("BUCKET_NAME", "era-bucket")
+ONNX_MODEL_PATH = env("ONNX_MODEL_PATH", "/content/drive/MyDrive/model.onnx")
+BASE_DATA_DIR = env("BASE_DATA_DIR", "/content/drive/MyDrive/data/content/data")
+GCLOUD_BUCKET = env(
+    "GCLOUD_BUCKET", "gs://gcp-public-data-arco-era5/ar/1959-2022-6h-1440x721.zarr"
+)
 
 
 env.read_env()
