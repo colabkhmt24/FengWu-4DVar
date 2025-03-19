@@ -1,8 +1,125 @@
 # FengWu-4DVar Demo
 
-[FengWu-4DVar](https://github.com/OpenEarthLab/FengWu-4DVar) reproduction
+<!-- prettier-ignore -->
+> [!NOTE]
+> **Disclaimer**: This repository is a reproduction of the
+> [FengWu-4DVar](https://github.com/OpenEarthLab/FengWu-4DVar) repository from
+> OpenEarthLab for research and educational purposes. Please refer to the
+> original repository for more details.
 
-## Prerequisites
+## Table of Contents
+
+- [FengWu-4DVar Demo](#fengwu-4dvar-demo)
+  - [Table of Contents](#table-of-contents)
+  - [Description](#description)
+  - [Environment Variables](#environment-variables)
+  - [Download pre-trained model](#download-pre-trained-model)
+  - [Setup for Google Colab environment (**recommended**)](#setup-for-google-colab-environment-recommended)
+    - [Prerequisites](#prerequisites)
+    - [Notebook](#notebook)
+  - [Setup for local environment](#setup-for-local-environment)
+    - [Prerequisites](#prerequisites-1)
+    - [Download dataset](#download-dataset)
+      - [Download dataset to Google Drive using Google Colab (**recommended**):](#download-dataset-to-google-drive-using-google-colab-recommended)
+  - [Setup for local S3 storage](#setup-for-local-s3-storage)
+    - [Setup data storage](#setup-data-storage)
+      - [Setup Garage instance](#setup-garage-instance)
+      - [Create buckets and keys](#create-buckets-and-keys)
+      - [Uploading and downloading from Garage](#uploading-and-downloading-from-garage)
+    - [Download dataset](#download-dataset-1)
+      - [Download dataset to Google Drive using Google Colab (**recommended**):](#download-dataset-to-google-drive-using-google-colab-recommended-1)
+      - [Download dataset directly to your S3 storage](#download-dataset-directly-to-your-s3-storage)
+        - [Expose the Garage instance with Ngrok](#expose-the-garage-instance-with-ngrok)
+        - [Download the dataset](#download-the-dataset)
+  - [Getting Started](#getting-started)
+  - [Notes](#notes)
+  - [Acknowledgements](#acknowledgements)
+
+## Description
+
+This repo setup to run FengWu-4DVar on these environments:
+
+- Google Colab.
+- Local environment.
+- Local S3 storage.
+
+## Environment Variables
+
+To run this project, you will need to add the following environment variables to
+your `.env` file:
+
+- Base configs:
+
+  - `ONNX_MODEL_PATH`: Path to the ONNX model file. Default:
+    `/content/drive/MyDrive/model.onnx`.
+
+- Get data from Google Cloud (**recommended**):
+
+  - `GCLOUD_BUCKET`: Google Cloud dataset from
+    [ERA5 data from Google Cloud Public Dataset](https://cloud.google.com/storage/docs/public-datasets/era5).
+    Default: `gs://gcp-public-data-arco-era5/ar/1959-2022-6h-1440x721.zarr`.
+
+- Get data from s3:
+
+  - `AWS_S3_ENDPOINT_URL`: S3 endpoint URL. Default: `localhost:3900`.
+  - `AWS_ACCESS_KEY_ID`: S3 access key ID.
+  - `AWS_SECRET_ACCESS_KEY`: S3 secret access key.
+
+- Get data from local file:
+
+  - `BASE_DATA_DIR`: Base data directory. Default:
+    `/content/drive/MyDrive/data/content/data`.
+
+E.g:
+
+```
+# .env
+ONNX_MODEL_PATH="/content/drive/MyDrive/model.onnx"
+GCLOUD_BUCKET="gs://gcp-public-data-arco-era5/ar/1959-2022-6h-1440x721.zarr"
+AWS_S3_ENDPOINT_URL="localhost:3900"
+AWS_ACCESS_KEY_ID="GK5f748179xxxx"
+AWS_SECRET_ACCESS_KEY="d981f2ff47xxxx"
+BASE_DATA_DIR="/content/drive/MyDrive/data/content/data"
+```
+
+You can also check out the file `.env.example` to see all required environment
+variables.
+
+## Download pre-trained model
+
+- Download trained models from
+  [OpenEarthLab/FengWu](https://github.com/OpenEarthLab/FengWu):
+
+  - Fengwu without transfer learning (fengwu_v1.onnx):
+    [Onedrive](https://pjlab-my.sharepoint.cn/:u:/g/personal/chenkang_pjlab_org_cn/EVA6V_Qkp6JHgXwAKxXIzDsBPIddo5RgDtGCBQ-sQbMmwg).
+
+  - Fengwu with transfer learning (fengwu_v2.onnx, finetune the model with
+    analysis data up to 2021):
+    [Onedrive](https://pjlab-my.sharepoint.cn/:u:/g/personal/chenkang_pjlab_org_cn/EZkFM7nQcEtBve6MsqlWaeIB_lmpa__hX0I8QYOPzf-X6A).
+
+## Setup for Google Colab environment (**recommended**)
+
+### Prerequisites
+
+This is tested within the following runtime:
+
+- Runtime type: `Python 3`.
+- Hardware accelerator: `CPU` + `High-RAM` (cost efficient but takes longer
+  time).
+
+Please
+
+### Notebook
+
+Please upload file [`notebooks/fengwu.ipynb`](./notebooks/fengwu.ipynb) to your
+Google Colab environment.
+
+You can adjust environment variables mentioned above beside the arguments passed
+to file `cyclic_da.py` in the notebook.
+
+## Setup for local environment
+
+### Prerequisites
 
 This repo is tested within the following environment:
 
@@ -10,11 +127,33 @@ This repo is tested within the following environment:
 - Python: `3.12`.
 - Docker: `Docker version 27.5.1, build 9f9e405`.
 
-## Setup data storage
+### Download dataset
+
+#### Download dataset to Google Drive using Google Colab (**recommended**):
+
+1. Upload & run this script
+   [data_prep_weather_forecast.ipynb](./notebooks/data_prep_weather_forecast.ipynb)
+   on your Google Colab environment.
+
+   This script will download a zip file that contains data from
+   [ERA5 data from Google Cloud Public Dataset](https://cloud.google.com/storage/docs/public-datasets/era5)
+   to your Google Drive.
+
+   Then you have to download it to your local machine.
+
+2. Extract the zip file:
+
+   ```bash
+   unzip era5.zip
+   ```
+
+## Setup for local S3 storage
+
+### Setup data storage
 
 If you already have a cloud S3 storage, you can skip this section.
 
-### Setup Garage instance
+#### Setup Garage instance
 
 See more from the official guides:
 [Quick Start](https://garagehq.deuxfleurs.fr/documentation/quick-start/) and
@@ -110,7 +249,7 @@ See more from the official guides:
   garage layout apply --version <VERSION>
   ```
 
-### Create buckets and keys
+#### Create buckets and keys
 
 - Create bucket:
 
@@ -148,7 +287,7 @@ See more from the official guides:
     --key era-app-key
   ```
 
-### Uploading and downloading from Garage
+#### Uploading and downloading from Garage
 
 - By default the package `awscli` is already installed from poetry. However, you
   can install it using the following command:
@@ -172,23 +311,13 @@ See more from the official guides:
   source ~/.awsrc
   ```
 
-## Download dataset
+### Download dataset
 
-- Download trained models from
-  [OpenEarthLab/FengWu](https://github.com/OpenEarthLab/FengWu):
-
-  - Fengwu without transfer learning (fengwu_v1.onnx):
-    [Onedrive](https://pjlab-my.sharepoint.cn/:u:/g/personal/chenkang_pjlab_org_cn/EVA6V_Qkp6JHgXwAKxXIzDsBPIddo5RgDtGCBQ-sQbMmwg).
-
-  - Fengwu with transfer learning (fengwu_v2.onnx, finetune the model with
-    analysis data up to 2021):
-    [Onedrive](https://pjlab-my.sharepoint.cn/:u:/g/personal/chenkang_pjlab_org_cn/EZkFM7nQcEtBve6MsqlWaeIB_lmpa__hX0I8QYOPzf-X6A).
-
-### Download dataset from Google Drive (**recommended**):
+#### Download dataset to Google Drive using Google Colab (**recommended**):
 
 1. Upload & run this script
-   [data_prep_weather_forecast.ipynb](/notebooks/data_prep_weather_forecast.
-   ipynb) on your Google Colab environment.
+   [data_prep_weather_forecast.ipynb](./notebooks/data_prep_weather_forecast.ipynb)
+   on your Google Colab environment.
 
    This script will download a zip file that contains data from
    [ERA5 data from Google Cloud Public Dataset](https://cloud.google.com/storage/docs/public-datasets/era5)
@@ -212,9 +341,9 @@ See more from the official guides:
 > [!NOTE]
 > `era-bucket` is the name of the bucket that you have created.
 
-### Download dataset directly to your S3 storage
+#### Download dataset directly to your S3 storage
 
-#### Expose the Garage instance with Ngrok
+##### Expose the Garage instance with Ngrok
 
 If you already have a cloud S3 storage, you can skip this section.
 
@@ -245,22 +374,25 @@ If you already have a cloud S3 storage, you can skip this section.
   ngrok http http://localhost:3900
   ```
 
-#### Download the dataset
+##### Download the dataset
 
 1. Upload & run this script
-   [data_prep_weather_forecast_async.ipynb](/notebooks/data_prep_weather_forecast_async.
-   ipynb) on your Google Colab environment.
+
+   - Async:
+     [async_data_prep_weather_forecast.ipynb](./notebooks/async_data_prep_weather_forecast.ipynb)
+     on your Google Colab environment.
+
+<!-- prettier-ignore -->
+> [!NOTE]
+> You can also copy function `uploadFileToS3` to sync
+> [data_prep_weather_forecast.ipynb](./notebooks/data_prep_weather_forecast.ipynb)
+> notebook.
 
 2. This script will download data from
    [ERA5 data from Google Cloud Public Dataset](https://cloud.google.com/storage/docs/public-datasets/era5)
    to S3 storage that you have created.
 
-<!-- prettier-ignore -->
-> [!NOTE]
-> You can remove async and just run the upload function if you don't want to use
-> asyncio.
-
-## Setup project environments
+## Getting Started
 
 - Clone the repository:
 
@@ -286,23 +418,13 @@ If you already have a cloud S3 storage, you can skip this section.
   poetry shell
   ```
 
-- Create a `.env` file:
-
-  - `AWS_ACCESS_KEY_ID`: Your AWS access key ID.
-  - `AWS_SECRET_ACCESS_KEY`: Your AWS secret access key.
-
-  E.g.:
+- Run the script:
 
   ```bash
-  # .env
-  AWS_ACCESS_KEY_ID="GK5f748179xxxx"
-  AWS_SECRET_ACCESS_KEY="d981f2ff47xxxx"
+  python3 "cyclic_da.py" --start_time="2021-10-01 00:00:00" --end_time="2021-12-31 23:00:00"
   ```
 
-  You can also check out the file `.env.example` to see all required environment
-  variables.
-
-## Setup dataset
+## Notes
 
 By default FengWu-4DVar is configured for (69, 128, 256) dataset shape, but the
 model taken from the original FengWu has shape (168, 721, 1440), so we need to
