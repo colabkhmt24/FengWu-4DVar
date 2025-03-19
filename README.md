@@ -14,23 +14,20 @@
   - [Description](#description)
   - [Environment Variables](#environment-variables)
   - [Download pre-trained model](#download-pre-trained-model)
-  - [Setup for Google Colab environment (**recommended**)](#setup-for-google-colab-environment-recommended)
+  - [Setup for Google Colab environment](#setup-for-google-colab-environment)
     - [Prerequisites](#prerequisites)
     - [Notebook](#notebook)
   - [Setup for local environment](#setup-for-local-environment)
     - [Prerequisites](#prerequisites-1)
-    - [Download dataset](#download-dataset)
-      - [Download dataset to Google Drive using Google Colab (**recommended**):](#download-dataset-to-google-drive-using-google-colab-recommended)
+    - [Download dataset to Google Drive using Google Colab](#download-dataset-to-google-drive-using-google-colab)
   - [Setup for local S3 storage](#setup-for-local-s3-storage)
     - [Setup data storage](#setup-data-storage)
       - [Setup Garage instance](#setup-garage-instance)
       - [Create buckets and keys](#create-buckets-and-keys)
       - [Uploading and downloading from Garage](#uploading-and-downloading-from-garage)
-    - [Download dataset](#download-dataset-1)
-      - [Download dataset to Google Drive using Google Colab (**recommended**):](#download-dataset-to-google-drive-using-google-colab-recommended-1)
-      - [Download dataset directly to your S3 storage](#download-dataset-directly-to-your-s3-storage)
-        - [Expose the Garage instance with Ngrok](#expose-the-garage-instance-with-ngrok)
-        - [Download the dataset](#download-the-dataset)
+    - [Download dataset directly to your S3 storage](#download-dataset-directly-to-your-s3-storage)
+      - [Expose the Garage instance with Ngrok](#expose-the-garage-instance-with-ngrok)
+      - [Download the dataset](#download-the-dataset)
   - [Getting Started](#getting-started)
   - [Notes](#notes)
   - [Acknowledgements](#acknowledgements)
@@ -39,7 +36,7 @@
 
 This repo setup to run FengWu-4DVar on these environments:
 
-- Google Colab.
+- Google Colab (**recommended**).
 - Local environment.
 - Local S3 storage.
 
@@ -53,7 +50,7 @@ your `.env` file:
   - `ONNX_MODEL_PATH`: Path to the ONNX model file. Default:
     `/content/drive/MyDrive/model.onnx`.
 
-- Get data from Google Cloud (**recommended**):
+- Get data from Google Cloud:
 
   - `GCLOUD_BUCKET`: Google Cloud dataset from
     [ERA5 data from Google Cloud Public Dataset](https://cloud.google.com/storage/docs/public-datasets/era5).
@@ -97,7 +94,7 @@ variables.
     analysis data up to 2021):
     [Onedrive](https://pjlab-my.sharepoint.cn/:u:/g/personal/chenkang_pjlab_org_cn/EZkFM7nQcEtBve6MsqlWaeIB_lmpa__hX0I8QYOPzf-X6A).
 
-## Setup for Google Colab environment (**recommended**)
+## Setup for Google Colab environment
 
 ### Prerequisites
 
@@ -106,8 +103,6 @@ This is tested within the following runtime:
 - Runtime type: `Python 3`.
 - Hardware accelerator: `CPU` + `High-RAM` (cost efficient but takes longer
   time).
-
-Please
 
 ### Notebook
 
@@ -127,9 +122,7 @@ This repo is tested within the following environment:
 - Python: `3.12`.
 - Docker: `Docker version 27.5.1, build 9f9e405`.
 
-### Download dataset
-
-#### Download dataset to Google Drive using Google Colab (**recommended**):
+### Download dataset to Google Drive using Google Colab
 
 1. Upload & run this script
    [data_prep_weather_forecast.ipynb](./notebooks/data_prep_weather_forecast.ipynb)
@@ -311,39 +304,14 @@ See more from the official guides:
   source ~/.awsrc
   ```
 
-### Download dataset
-
-#### Download dataset to Google Drive using Google Colab (**recommended**):
-
-1. Upload & run this script
-   [data_prep_weather_forecast.ipynb](./notebooks/data_prep_weather_forecast.ipynb)
-   on your Google Colab environment.
-
-   This script will download a zip file that contains data from
-   [ERA5 data from Google Cloud Public Dataset](https://cloud.google.com/storage/docs/public-datasets/era5)
-   to your Google Drive.
-
-   Then you have to download it to your local machine.
-
-2. Extract the zip file:
-
-   ```bash
-   unzip era5.zip
-   ```
-
-3. Copy dataset to S3 storage using AWS cli:
-
-   ```bash
-   aws s3 cp era5 s3://era-bucket/ --recursive
-   ```
+### Download dataset directly to your S3 storage
 
 <!-- prettier-ignore -->
 > [!NOTE]
-> `era-bucket` is the name of the bucket that you have created.
+> It's recommended to use Google Colab and download dataset to Google Drive as
+> mentioned [above](#download-dataset-to-google-drive-using-google-colab)
 
-#### Download dataset directly to your S3 storage
-
-##### Expose the Garage instance with Ngrok
+#### Expose the Garage instance with Ngrok
 
 If you already have a cloud S3 storage, you can skip this section.
 
@@ -374,7 +342,7 @@ If you already have a cloud S3 storage, you can skip this section.
   ngrok http http://localhost:3900
   ```
 
-##### Download the dataset
+#### Download the dataset
 
 1. Upload & run this script
 
