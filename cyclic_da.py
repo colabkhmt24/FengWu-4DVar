@@ -16,10 +16,16 @@ from utils.metrics import Metrics
 
 torch.cuda.empty_cache()
 
-AWS_S3_ENDPOINT_URL = env("AWS_S3_ENDPOINT_URL", "localhost:3900")
-BUCKET_NAME = env("BUCKET_NAME", "era-bucket")
 ONNX_MODEL_PATH = env("ONNX_MODEL_PATH", "/content/drive/MyDrive/model.onnx")
+
+# NOTE: For get_one_state_from_s3
+AWS_S3_ENDPOINT_URL = env("AWS_S3_ENDPOINT_URL", "localhost:3900")
+AWS_ACCESS_KEY_ID = env("AWS_ACCESS_KEY_ID", "")
+AWS_SECRET_ACCESS_KEY = env("AWS_SECRET_ACCESS_KEY", "")
+BUCKET_NAME = env("BUCKET_NAME", "era-bucket")
+# NOTE: For get_one_state_from_local
 BASE_DATA_DIR = env("BASE_DATA_DIR", "/content/drive/MyDrive/data/content/data")
+# NOTE: For get_one_state_from_gcloud
 GCLOUD_BUCKET = env(
     "GCLOUD_BUCKET", "gs://gcp-public-data-arco-era5/ar/1959-2022-6h-1440x721.zarr"
 )
@@ -108,8 +114,8 @@ class data_reader:
 
         self.client = minio.Minio(
             AWS_S3_ENDPOINT_URL,
-            env("AWS_ACCESS_KEY_ID", ""),
-            env("AWS_SECRET_ACCESS_KEY", ""),
+            AWS_ACCESS_KEY_ID,
+            AWS_SECRET_ACCESS_KEY,
             # Force the region, this is specific to garage
             region="garage",
             secure=False,
