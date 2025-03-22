@@ -284,7 +284,7 @@ class cyclic_4dvar:
         self.device = "cpu"
         self.start_time = pd.Timestamp(args.start_time)
         self.end_time = pd.Timestamp(args.end_time)
-        self.cycle_time = pd.Timedelta("12H")
+        self.cycle_time = pd.Timedelta("1H")
         self.step_int_time = pd.Timedelta("6H")
         self.da_mode = args.da_mode
         self.da_win = args.da_win
