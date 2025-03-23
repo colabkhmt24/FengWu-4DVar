@@ -49,6 +49,7 @@ your `.env` file:
 
   - `ONNX_MODEL_PATH`: Path to the ONNX model file. Default:
     `/content/drive/MyDrive/model.onnx`.
+  - `BASE_RESULT_DIR`: Base result directory. Default: `./da_cycle_results`.
 
 - Get data from Google Cloud:
 
@@ -72,6 +73,7 @@ E.g:
 ```
 # .env
 ONNX_MODEL_PATH="/content/drive/MyDrive/model.onnx"
+BASE_RESULT_DIR="./da_cycle_results"
 GCLOUD_BUCKET="gs://gcp-public-data-arco-era5/ar/1959-2022-6h-1440x721.zarr"
 AWS_S3_ENDPOINT_URL="localhost:3900"
 AWS_ACCESS_KEY_ID="GK5f748179xxxx"

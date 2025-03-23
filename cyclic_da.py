@@ -17,6 +17,7 @@ from utils.metrics import Metrics
 torch.cuda.empty_cache()
 
 ONNX_MODEL_PATH = env("ONNX_MODEL_PATH", "/content/drive/MyDrive/model.onnx")
+BASE_RESULT_DIR=env("BASE_RESULT_DIR", "./da_cycle_results")
 
 # NOTE: For get_one_state_from_s3
 AWS_S3_ENDPOINT_URL = env("AWS_S3_ENDPOINT_URL", "localhost:3900")
@@ -402,7 +403,7 @@ class cyclic_4dvar:
         return model
 
     def init_file_dir(self):
-        os.makedirs(f"da_cycle_results/{self.name}", exist_ok=True)
+        os.makedirs(f"{BASE_RESULT_DIR}/{self.name}", exist_ok=True)
 
     def get_static_info(self):
         ### calculating horizontal factor
@@ -510,10 +511,10 @@ class cyclic_4dvar:
         ) + self.model_mean.reshape(-1, 1, 1)
 
     def get_current_states(self):
-        if os.path.exists(f"da_cycle_results/{self.name}/current_time.txt"):
-            f = open(f"da_cycle_results/{self.name}/current_time.txt")
+        if os.path.exists(f"{BASE_RESULT_DIR}/{self.name}/current_time.txt"):
+            f = open(f"{BASE_RESULT_DIR}/{self.name}/current_time.txt")
             self.current_time = pd.Timestamp(f.read())
-            state = np.load(f"da_cycle_results/{self.name}/xb.npy")
+            state = np.load(f"{BASE_RESULT_DIR}/{self.name}/xb.npy")
             self.xb = torch.from_numpy(state).to(self.device)
         else:
             self.current_time = self.start_time
@@ -523,20 +524,20 @@ class cyclic_4dvar:
 
     def save_eval_result(self, finish=False, gt=None, obs=None):
         for key in self.metrics_list:
-            np.save(f"da_cycle_results/{self.name}/{key}", self.metrics_list[key])
+            np.save(f"{BASE_RESULT_DIR}/{self.name}/{key}", self.metrics_list[key])
         print("finish saving results")
 
         if not finish:
-            np.save(f"da_cycle_results/{self.name}/xb", self.xb.cpu().numpy())
-            with open(f"da_cycle_results/{self.name}/current_time.txt", "w") as f:
+            np.save(f"{BASE_RESULT_DIR}/{self.name}/xb", self.xb.cpu().numpy())
+            with open(f"{BASE_RESULT_DIR}/{self.name}/current_time.txt", "w") as f:
                 f.write(str(self.current_time))
             if self.save_field:
                 np.save(
-                    "da_cycle_results/%s/xb_%s" % (self.name, self.current_time),
+                    "%s/%s/xb_%s" % (BASE_RESULT_DIR, self.name, self.current_time),
                     self.xb.detach().cpu().numpy(),
                 )
                 np.save(
-                    "da_cycle_results/%s/xa_%s" % (self.name, self.current_time),
+                    "%s/%s/xa_%s" % (BASE_RESULT_DIR,self.name, self.current_time),
                     self.xa.detach().cpu().numpy(),
                 )
                 print("finish saving intermediate fields")
@@ -555,9 +556,9 @@ class cyclic_4dvar:
 
     def load_eval_ckpts(self):
         for key in self.metrics_list:
-            if os.path.exists("da_cycle_results/%s/%s.npy" % (self.name, key)):
+            if os.path.exists("%s/%s/%s.npy" % (BASE_RESULT_DIR, self.name, key)):
                 self.metrics_list[key] = np.load(
-                    "da_cycle_results/%s/%s.npy" % (self.name, key)
+                    "%s/%s/%s.npy" % (BASE_RESULT_DIR, self.name, key)
                 ).tolist()
 
     def get_obs_info(self):
